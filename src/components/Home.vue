@@ -1,110 +1,153 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12" xs="12" sm="12" md="4" lg="4">
-        <v-container>
-          <h1>Authenticate</h1>
-          <v-row>
-            <v-col cols="12">
-              <v-text-field
-                  id="appid"
-                  label="app uuid"
-                  placeholder="app uuid"
-                  :rules="[validateUUID]"
-                  outlined>
-              </v-text-field>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-col cols="6">
-              <v-text-field
-                  id="apiuser"
-                  label="api user"
-                  placeholder="api user"
-                  :rules="[notNull]"
-                  outlined>
-              </v-text-field>
-            </v-col>
-            <v-col cols="6">
-              <v-text-field
-                  id="apipass"
-                  label="api pass"
-                  placeholder="api pass"
-                  :rules="[notNull]"
-                  type="password"
-                  outlined>
-              </v-text-field>
-            </v-col>
-          </v-row>
-          <v-row>
-            <v-btn 
-              @click="getManifest"
-              block 
-              color="primary">
-              GO
-            </v-btn>
-          </v-row>
-        </v-container>
-      </v-col>
-      <v-col cols="12" xs="12" sm="12" md="8" lg="8">
-        <v-container>
-          <h1>App Preview Pane</h1>
-          <preview :manifest="manifest"></preview>
-        </v-container>
-      </v-col>
-    </v-row>
+  <v-container v-if="current.manifest">
+    <v-container>
+      <v-row>
+        <v-col>
+          <h1>Home</h1>
+        </v-col>
+        <v-col class="centerChildren">
+          <v-btn color="primary" style="margin-left: auto" @click.stop="addApp">
+            Add New App
+          </v-btn>
+        </v-col>
+      </v-row>
+    </v-container>
+    <v-container>
+      <app-chip
+        @delApp="deleteApp"
+        v-for="manifest in manifests"
+        :key="manifest.uuid"
+        :current.sync="current"
+        :app="manifest"
+      ></app-chip>
+    </v-container>
+
+    <v-container>
+      <v-btn
+        class="mr-4"
+        :color="editorTab === 'all' ? 'primary' : 'default'"
+        small
+        @click.stop="editorTab = 'all'"
+      >
+        All
+      </v-btn>
+      <v-btn
+        class="mr-4"
+        :color="editorTab === 'profile' ? 'primary' : 'default'"
+        small
+        @click.stop="editorTab = 'profile'"
+      >
+        Profile
+      </v-btn>
+      <v-btn
+        class="mr-4"
+        :color="editorTab === 'plans' ? 'primary' : 'default'"
+        small
+        @click.stop="editorTab = 'plans'"
+      >
+        Plans
+      </v-btn>
+      <v-btn
+        class="mr-4"
+        :color="editorTab === 'callbacks' ? 'primary' : 'default'"
+        small
+        @click.stop="editorTab = 'callbacks'"
+      >
+        Callbacks
+      </v-btn>
+      <v-btn
+        class="mr-4"
+        :color="editorTab === 'webhooks' ? 'primary' : 'default'"
+        small
+        @click.stop="editorTab = 'webhooks'"
+      >
+        Webhooks
+      </v-btn>
+    </v-container>
+
+    <v-container>
+      <v-divider class="mt-3"></v-divider>
+    </v-container>
+
+    <editor :app="current.manifest" :editorTab="editorTab"></editor>
+
+    <v-container>
+      <add-app :show.sync="showAddApp" @addApp:ok="getApps"></add-app>
+      <delete-app
+        :show.sync="showDeleteApp"
+        :app="targetApp"
+        @delApp:ok="getApps"
+      ></delete-app>
+    </v-container>
   </v-container>
 </template>
 
 <script>
-import { validate } from 'uuid';
-import fetch from 'node-fetch';
+import AddApp from "./AddApp.vue";
+import DeleteApp from "./DeleteApp.vue";
 
-import Preview from './Preview';
+import AppChip from "./AppChip.vue";
+import Editor from "./Editor.vue";
 
-  export default {
-    name: 'Home',
-    components: {
-      Preview,
+export default {
+  name: "Home",
+  components: {
+    AddApp,
+    DeleteApp,
+    AppChip,
+    Editor,
+  },
+  async created() {
+    await this.getApps();
+  },
+  data: () => ({
+    editorTab: "all",
+    manifests: [],
+    chips: [],
+    current: {
+      uuid: null,
+      manifest: null,
     },
-    data: () => {
-      return {
-        rememberLogin: false,
-        manifest: {},
-      }
+    showAddApp: false,
+    showDeleteApp: false,
+    targetApp: {
+      uuid: null,
+      name: null,
     },
-    methods: {
-      validateUUID(check) {
-        return validate(check) || "Invalid UUID";
-      },
-      notNull(check) {
-        return !!check || "Missing value";
-      },
-      getManifest() {
-        const app = document.querySelector("#appid").value;
-        const user = document.querySelector("#apiuser").value;
-        const pass = document.querySelector("#apipass").value;
-        fetch(`https://438aa7fe7d5d.ngrok.io/duda/manifest`, {
-          method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            uuid: app,
-            token: Buffer.from(`${user}:${pass}`).toString('base64'),
-          })
-        })
-        .then((res) => res.json())
-        .then((manifest) => this.manifest = manifest)
-        .catch((error) => console.error(error));
-      }
-    }
-  }
+  }),
+  methods: {
+    addApp() {
+      this.showAddApp = true;
+    },
+    deleteApp(app) {
+      this.targetApp.uuid = app.uuid;
+      this.targetApp.name = app.name;
+      this.showDeleteApp = true;
+    },
+    getApps() {
+      return fetch("https://duda.ejmorgan.com/8082/api/apps").then(
+        async (res) => {
+          const ok = res.ok;
+          const reply = await res.json();
+
+          if (!ok) {
+            return console.error(reply.message);
+          }
+
+          this.manifests = reply.message;
+          this.current.uuid = this.manifests[0].uuid ?? null;
+          this.current.manifest = this.manifests[0] ?? null;
+        }
+      );
+    },
+  },
+};
 </script>
 
 <style scoped>
-h1 { 
-  margin-bottom: 15px;
+.centerChildren {
+  display: flex;
+  align-items: center;
+  flex-direction: row;
 }
 </style>

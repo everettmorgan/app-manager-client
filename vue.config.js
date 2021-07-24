@@ -1,6 +1,8 @@
 module.exports = {
+    publicPath: "/sso",
     devServer: {
         disableHostCheck: true,
+        port: 8081,
     },
     transpileDependencies: [
       'vuetify'
@@ -8,7 +10,7 @@ module.exports = {
     pages: {
       index: {
         entry: 'src/main.js',
-        title: "Everett's App Manager",
+        title: "App Manager",
       }
     },
   }

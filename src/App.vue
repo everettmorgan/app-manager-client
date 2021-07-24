@@ -1,9 +1,6 @@
 <template>
   <v-app>
-    <v-app-bar
-      app
-      color="primary"
-      dark>
+    <v-app-bar app color="primary" dark>
       <v-toolbar-title><b>App Manager</b></v-toolbar-title>
     </v-app-bar>
     <router-view id="view"></router-view>
@@ -12,11 +9,9 @@
 
 <script>
 export default {
-  name: 'App',
+  name: "App",
   components: {},
-  data: () => ({
-    //
-  }),
+  data: () => ({}),
 };
 </script>
 
